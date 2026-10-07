@@ -1,9 +1,30 @@
 # frozen_string_literal: true
 
 require_relative 'zstream'
+require_relative 'inflate_index'
 
 module Zlib
   class Inflate < ZStream
+
+    # The InflateIndex currently attached to this stream, or nil.
+    attr_reader :diag_index
+
+    # Enable the diagnostic token index. Returns the Zlib::InflateIndex
+    # that will be filled while inflating. Pass a Range of output
+    # positions to limit detailed recording (compressed bit ranges) to
+    # tokens intersecting that range.
+    def enable_diag_index(out_range = nil)
+      @diag_index = InflateIndex.new(out_range)
+      @z.stream.state.diag = @diag_index if @z.stream.state
+      @diag_index
+    end
+
+    # Stop recording diagnostic tokens. Records already made are kept in
+    # the previously returned index.
+    def disable_diag_index
+      @z.stream.state.diag = nil if @z.stream.state
+      @diag_index = nil
+    end
 
     def self.inflate_run(src)
       @z.zstream_run(src, src.length, Z_SYNC_FLUSH)

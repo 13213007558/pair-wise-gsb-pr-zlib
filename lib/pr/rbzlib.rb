@@ -3782,7 +3782,7 @@ module Rbzlib
   Inflate_state = Struct.new(:mode, :last, :wrap, :havedict, :flags, :dmax, :check, :total,
     :head, :wbits, :wsize, :whave, :write, :window, :hold, :bits, :length, :offset,
     :extra, :lencode, :distcode, :lenbits, :distbits, :ncode, :nlen, :ndist, :have, :next, :lens,
-    :work, :codes)
+    :work, :codes, :diag, :diag_bit)
 
   #
   def inflateInit(strm)
@@ -4203,6 +4203,7 @@ module Rbzlib
     _in = @@have
     out = @@left
     ret = Z_OK
+    diag = state.diag
 
     catch :inf_leave do
       loop do
@@ -4413,6 +4414,7 @@ module Rbzlib
             state.mode = CHECK
             next
           end
+          state.diag_bit = (strm.total_in + (_in - @@have)) * 8 - @@bits if diag
           NEEDBITS(3)
           state.last = BITS(1)
           DROPBITS(1)
@@ -4440,6 +4442,12 @@ module Rbzlib
           end
           state.length = @@hold & 0xffff
           INITBITS()
+          if diag
+            out_pos = strm.total_out + (out - @@left)
+            bit_end = (strm.total_in + (_in - @@have)) * 8 - @@bits
+            diag.record(:stored, state.diag_bit, bit_end + state.length * 8,
+                        out_pos, out_pos + state.length)
+          end
           state.mode = COPY
         end
         if state.mode == COPY
@@ -4574,12 +4582,13 @@ module Rbzlib
           state.mode = LEN
         end
         if state.mode == LEN
-          if @@have >= 6 && @@left >= 258
+          if @@have >= 6 && @@left >= 258 && diag.nil?
             RESTORE(strm, state)
             inflate_fast(strm, out)
             LOAD(strm, state)
             next
           end
+          state.diag_bit = (strm.total_in + (_in - @@have)) * 8 - @@bits if diag
           this = nil
           loop do
             this = state.lencode[BITS(state.lenbits)]
@@ -4659,6 +4668,12 @@ module Rbzlib
             state.mode = BAD
             next
           end
+          if diag
+            out_pos = strm.total_out + (out - @@left)
+            diag.record(:match, state.diag_bit,
+                        (strm.total_in + (_in - @@have)) * 8 - @@bits,
+                        out_pos, out_pos + state.length, state.offset)
+          end
           state.mode = MATCH
         end
         if state.mode == MATCH
@@ -4691,6 +4706,12 @@ module Rbzlib
         end
         if state.mode == LIT
           throw :inf_leave if @@left == 0
+          if diag
+            out_pos = strm.total_out + (out - @@left)
+            diag.record(:literal, state.diag_bit,
+                        (strm.total_in + (_in - @@have)) * 8 - @@bits,
+                        out_pos, out_pos + 1)
+          end
           @@put.set(state.length)
           @@put += 1
           @@left -= 1

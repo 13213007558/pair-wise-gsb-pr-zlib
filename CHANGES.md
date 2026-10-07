@@ -1,3 +1,11 @@
+## 1.1.1 - 8-Oct-2026
+* Added Zlib::InflateIndex, an optional diagnostic index for Zlib::Inflate.
+  When enabled via Zlib::Inflate#enable_diag_index it records each deflate
+  token's compressed bit range, output range and back-reference source, and
+  can trace any output byte back through a chain of back references to the
+  literal it originated from. Detailed recording can be limited to a given
+  output range; when disabled no per-token records are kept.
+
 ## 1.1.0 - 30-Aug-2025
 * Fixed several critical bugs.
 * Many Ruby and Rubocop warnings cleaned up.
