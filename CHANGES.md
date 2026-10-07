@@ -1,3 +1,12 @@
+## Unreleased
+* Added Zlib::GzipIndex, a random-access index for large gzip files.
+  Building an index inflates the file once and records checkpoints (bit
+  state plus the 32KB history window) at deflate block boundaries, so
+  individual uncompressed regions can later be read without decompressing
+  the whole file.  Indexes are bound to the source file identity and
+  refuse to operate on a changed file, and CRC verification is reported
+  separately for the whole stream and for individual partial reads.
+
 ## 1.1.0 - 30-Aug-2025
 * Fixed several critical bugs.
 * Many Ruby and Rubocop warnings cleaned up.

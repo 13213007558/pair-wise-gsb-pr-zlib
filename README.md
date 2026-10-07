@@ -19,6 +19,36 @@ data = StringIO.new(data)
 Zlib::GzipReader.new(data).read
 ```
 
+## Random access into large gzip files
+
+When a few uncompressed regions of a large gzip file must be read
+repeatedly, build a Zlib::GzipIndex once and read by offset afterwards:
+
+```ruby
+require 'pr/zlib'
+
+index = Zlib::GzipIndex.build('big.gz', span: 1 << 20)
+index.save('big.gz.gzi') # persist for later runs
+
+index = Zlib::GzipIndex.load('big.gz.gzi')
+index.open('big.gz') do |gz|
+  gz.read_at(1_000_000, 4096) # 4096 bytes at uncompressed offset 1_000_000
+  gz.last_verification        # CRC scope of that read only (:partial)
+end
+
+index.verification # whole-stream CRC report (:full_stream)
+```
+
+Building the index inflates the file once and records a checkpoint at a
+deflate block boundary every +span+ uncompressed bytes. Each checkpoint
+stores the bit state and the 32KB history window needed to resume inflate
+mid-stream, so the source file does not need to be split into independent
+gzip members. An index is bound to the identity of its source file and
+raises Zlib::GzipIndex::StaleIndexError if the file changed since the
+index was built. CRC verification of the complete stream (done while
+building, or on demand via Zlib::GzipIndex#verify!) is reported separately
+from the verification scope of individual partial reads.
+
 ## Motivation
 First, building the zlib C library on MS Windows with Visual C++ is very
 difficult. However, certain libraries depend on zlib, most notably rubygems.

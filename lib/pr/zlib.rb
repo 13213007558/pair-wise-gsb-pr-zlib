@@ -13,6 +13,7 @@ require_relative 'zlib/inflate'
 require_relative 'zlib/gzipfile'
 require_relative 'zlib/gzipwriter'
 require_relative 'zlib/gzipreader'
+require_relative 'zlib/gzip_index'
 
 include Rbzlib
 
