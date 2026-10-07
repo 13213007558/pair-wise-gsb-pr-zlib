@@ -18,6 +18,10 @@ RSpec.describe Zlib::Deflate do
     it 'responds to deflate' do
       expect(described_class).to respond_to(:deflate)
     end
+
+    it 'responds to optimal_deflate' do
+      expect(described_class).to respond_to(:optimal_deflate)
+    end
   end
 
   describe 'instance methods' do

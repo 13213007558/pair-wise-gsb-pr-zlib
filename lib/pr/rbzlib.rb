@@ -4975,4 +4975,6 @@ module Rbzlib
   end
 
 
+require_relative 'rbzlib/optimal_deflate'
+
 end

@@ -19,6 +19,18 @@ data = StringIO.new(data)
 Zlib::GzipReader.new(data).read
 ```
 
+For one-shot compression with block boundaries optimized for ratio instead
+of speed, use `Zlib::Deflate.optimal_deflate`. The default levels and fast
+mode remain unchanged.
+
+```ruby
+result = Zlib::Deflate.optimal_deflate(data, budget: 25_000)
+result.output                 # Zlib-wrapped DEFLATE output
+result.diagnostics[:search]   # :exhaustive for short inputs, otherwise :bounded
+result.diagnostics[:complete] # whether the selected search completed
+result.diagnostics[:blocks]   # stored, fixed, and dynamic block boundaries
+```
+
 ## Motivation
 First, building the zlib C library on MS Windows with Visual C++ is very
 difficult. However, certain libraries depend on zlib, most notably rubygems.

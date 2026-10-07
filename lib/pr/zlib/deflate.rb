@@ -27,6 +27,10 @@ module Zlib
       dst
     end
 
+    def self.optimal_deflate(src, budget: Rbzlib::OptimalPlanner::DEFAULT_BUDGET)
+      Rbzlib.optimal_deflate(src, budget: budget)
+    end
+
     def initialize(level = Z_DEFAULT_COMPRESSION, wbits = MAX_WBITS, memlevel = DEF_MEM_LEVEL, strategy = Z_DEFAULT_STRATEGY)
       @z = ZStream.new
       @z.zstream_init(DeflateFuncs)

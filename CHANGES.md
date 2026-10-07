@@ -1,3 +1,9 @@
+## Unreleased
+* Added an experimental one-shot ratio-oriented mode via
+  `Zlib::Deflate.optimal_deflate`. It chooses stored, fixed, and dynamic
+  blocks by bit-accurate cost, optimizes boundaries within an explicit
+  budget, keeps the LZ77 window across blocks, and returns search diagnostics.
+
 ## 1.1.0 - 30-Aug-2025
 * Fixed several critical bugs.
 * Many Ruby and Rubocop warnings cleaned up.
