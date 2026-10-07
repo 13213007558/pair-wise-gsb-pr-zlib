@@ -7,6 +7,7 @@
 
 require_relative 'rbzlib'
 require_relative 'zlib/errors'
+require_relative 'zlib/inflate_index'
 require_relative 'zlib/zstream'
 require_relative 'zlib/deflate'
 require_relative 'zlib/inflate'

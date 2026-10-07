@@ -5,6 +5,25 @@ require_relative 'zstream'
 module Zlib
   class Inflate < ZStream
 
+    attr_reader :diagnostic_index
+
+    # Attach a Zlib::InflateIndex that records every deflate token (literal or
+    # back-reference) as it is inflated, along with its compressed bit range,
+    # output range and back-reference source. Pass output_range to only record
+    # tokens whose output intersects that range. Returns the index.
+    def enable_diagnostics(output_range: nil)
+      @diagnostic_index = InflateIndex.new(output_range: output_range)
+      @z.stream.state.diag = @diagnostic_index
+      @diagnostic_index
+    end
+
+    # Detach the diagnostic index, if any. Inflate keeps no per-byte records
+    # while diagnostics are disabled.
+    def disable_diagnostics
+      @z.stream.state.diag = nil
+      @diagnostic_index = nil
+    end
+
     def self.inflate_run(src)
       @z.zstream_run(src, src.length, Z_SYNC_FLUSH)
       @z.zstream_run('', 0, Z_FINISH)

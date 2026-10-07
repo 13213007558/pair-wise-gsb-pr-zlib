@@ -19,6 +19,33 @@ data = StringIO.new(data)
 Zlib::GzipReader.new(data).read
 ```
 
+## Inflate diagnostics
+When two decompressed outputs diverge late in the stream and you need to know
+which deflate token produced a given byte, attach a Zlib::InflateIndex:
+
+```ruby
+require 'pr/zlib'
+
+inflater = Zlib::Inflate.new
+index = inflater.enable_diagnostics # or: enable_diagnostics(output_range: 1_000_000...2_000_000)
+output = inflater.inflate(compressed_data)
+
+index.tokens.each { |token| puts token } # literals and back-references
+
+# Which token produced output byte 12345, and where did it come from?
+index.trace(12345).each { |hop| puts hop } # walks back to the original literal
+```
+
+Each recorded token knows its compressed bit range (absolute bit offsets into
+the compressed input), its output byte range, and, for back-references, the
+source output range it was copied from. Tracing a byte follows the chain of
+back-references back to the literal it originated from; self-overlapping
+matches (distance < length) are followed one hop at a time, so they terminate
+instead of expanding into an infinite source chain.
+
+Pass `output_range:` to only record tokens whose output intersects that
+range. When no index is attached, inflate keeps no per-byte records at all.
+
 ## Motivation
 First, building the zlib C library on MS Windows with Visual C++ is very
 difficult. However, certain libraries depend on zlib, most notably rubygems.

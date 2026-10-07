@@ -3511,7 +3511,7 @@ module Rbzlib
   #    requires strm->avail_out >= 258 for each loop to avoid checking for
   #    output space.
   #
-  def inflate_fast(strm, start)
+  def inflate_fast(strm, start, diag_in_base = nil, diag_out_base = nil)
     state = strm.state
     _in = Bytef.new(strm.next_in, strm.next_in.offset - 1)
     last = Bytef.new(_in, _in.offset + (strm.avail_in - 5))
@@ -3534,7 +3534,14 @@ module Rbzlib
     op = -1
     len = -1
 
+    diag = state.diag
+    if diag
+      diag_in_base -= strm.avail_in + strm.next_in.offset - 1
+      diag_out_base -= strm.avail_out + strm.next_out.offset - 1
+    end
+
     loop do
+      diag_tbit = (diag_in_base + _in.offset) * 8 - bits if diag && status.nil?
       if status.nil?
         if bits < 15
           _in += 1
@@ -3556,6 +3563,10 @@ module Rbzlib
       if op == 0
         out += 1
         out.set(this.val)
+        if diag
+          diag.record_literal(diag_tbit, (diag_in_base + _in.offset) * 8 - bits,
+            diag_out_base + out.offset - 1, this.val)
+        end
       elsif (op & 16) != 0 || status == :dodist
         if status != :dodist && (op & 16) != 0
           len = this.val
@@ -3600,6 +3611,11 @@ module Rbzlib
           dist += hold & ((1 << op) - 1)
           hold >>= op
           bits -= op
+          if diag
+            diag_mbit = (diag_in_base + _in.offset) * 8 - bits
+            diag_mout = diag_out_base + out.offset
+            diag_mlen = len
+          end
           op = (out.offset - beg.offset)
           if dist > op
             op = dist - op
@@ -3710,6 +3726,7 @@ module Rbzlib
               end
             end
           end
+          diag.record_match(diag_tbit, diag_mbit, diag_mout, diag_mlen, dist) if diag
         elsif (op & 64) == 0
           this = dcode[this.val + (hold & ((1 << op) - 1))]
           status = :dodist
@@ -3782,7 +3799,7 @@ module Rbzlib
   Inflate_state = Struct.new(:mode, :last, :wrap, :havedict, :flags, :dmax, :check, :total,
     :head, :wbits, :wsize, :whave, :write, :window, :hold, :bits, :length, :offset,
     :extra, :lencode, :distcode, :lenbits, :distbits, :ncode, :nlen, :ndist, :have, :next, :lens,
-    :work, :codes)
+    :work, :codes, :diag)
 
   #
   def inflateInit(strm)
@@ -4204,6 +4221,12 @@ module Rbzlib
     out = @@left
     ret = Z_OK
 
+    diag = state.diag
+    if diag
+      diag_in_base = strm.total_in + _in
+      diag_out_base = strm.total_out + out
+    end
+
     catch :inf_leave do
       loop do
         if state.mode == HEAD
@@ -4576,10 +4599,11 @@ module Rbzlib
         if state.mode == LEN
           if @@have >= 6 && @@left >= 258
             RESTORE(strm, state)
-            inflate_fast(strm, out)
+            inflate_fast(strm, out, diag_in_base, diag_out_base)
             LOAD(strm, state)
             next
           end
+          diag.begin_token((diag_in_base - @@have) * 8 - @@bits) if diag
           this = nil
           loop do
             this = state.lencode[BITS(state.lenbits)]
@@ -4680,6 +4704,11 @@ module Rbzlib
           copy = @@left if copy > @@left
           @@left -= copy
           state.length -= copy
+          if diag
+            diag.record_match(diag.pending_bit_start,
+              (diag_in_base - @@have) * 8 - @@bits,
+              diag_out_base - @@left - copy, copy, state.offset)
+          end
           loop do
             @@put.set(from.get)
             @@put += 1
@@ -4691,6 +4720,11 @@ module Rbzlib
         end
         if state.mode == LIT
           throw :inf_leave if @@left == 0
+          if diag
+            diag.record_literal(diag.pending_bit_start,
+              (diag_in_base - @@have) * 8 - @@bits,
+              diag_out_base - @@left, state.length)
+          end
           @@put.set(state.length)
           @@put += 1
           @@left -= 1
