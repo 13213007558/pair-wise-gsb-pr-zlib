@@ -19,6 +19,30 @@ data = StringIO.new(data)
 Zlib::GzipReader.new(data).read
 ```
 
+## Random access into large gzip files
+
+The Zlib::GzipIndex class builds a random-access index over a gzip file.
+Checkpoints are taken at deflate block boundaries and store the bit state
+and 32KB history window needed to resume inflate, so the source file does
+not need to be split into independent gzip members (concatenated members
+are supported, too). An index is bound to the source file's identity and
+refuses to be used after the file changes.
+
+```ruby
+require 'pr/zlib'
+
+index = Zlib::GzipIndex.build('big.gz', span: 1 << 20)
+index.save('big.gz.idx')
+
+index  = Zlib::GzipIndex.load('big.gz.idx')
+reader = index.reader_for('big.gz') # raises if big.gz changed
+chunk  = reader.read(10_000_000, 4096)
+
+reader.last_report.full_file? # => false: a partial read never claims
+                              # whole-file CRC integrity
+reader.verify.ok?             # => true: full CRC32/ISIZE pass over every member
+```
+
 ## Motivation
 First, building the zlib C library on MS Windows with Visual C++ is very
 difficult. However, certain libraries depend on zlib, most notably rubygems.
