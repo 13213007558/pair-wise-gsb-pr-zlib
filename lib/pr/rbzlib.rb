@@ -2596,6 +2596,42 @@ module Rbzlib
 
   @@bl_order = [16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15]
 
+  def self.optimal_extra_lbits
+    @@extra_lbits
+  end
+
+  def self.optimal_extra_dbits
+    @@extra_dbits
+  end
+
+  def self.optimal_extra_blbits
+    @@extra_blbits
+  end
+
+  def self.optimal_base_length
+    @@base_length
+  end
+
+  def self.optimal_base_dist
+    @@base_dist
+  end
+
+  def self.optimal_length_code
+    @@_length_code
+  end
+
+  def self.optimal_dist_code
+    @@_dist_code
+  end
+
+  def self.optimal_bl_order
+    @@bl_order
+  end
+
+  def self.optimal_static_trees
+    [@@static_ltree, @@static_dtree]
+  end
+
   Buf_size = (8 * 2 * 1)
 
   @@static_l_desc = Static_tree_desc.new(@@static_ltree, @@extra_lbits, LITERALS + 1, L_CODES, MAX_BITS)
@@ -4976,3 +5012,5 @@ module Rbzlib
 
 
 end
+
+require_relative 'rbzlib/optimal_deflate'

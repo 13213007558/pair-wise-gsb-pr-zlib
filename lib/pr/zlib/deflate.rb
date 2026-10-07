@@ -27,6 +27,25 @@ module Zlib
       dst
     end
 
+    def self.optimal_deflate(src, level = Z_BEST_COMPRESSION, **options)
+      level = 6 if level == Z_DEFAULT_COMPRESSION
+      raw = Rbzlib.optimal_deflate(src, **options.merge(level: level))
+      checksum = Rbzlib.adler32(1, src.dup.force_encoding(Encoding::BINARY), src.bytesize)
+      output = String.new("x\xDA", encoding: Encoding::BINARY)
+      output.concat(raw.string)
+      output << ((checksum >> 24) & 0xff)
+      output << ((checksum >> 16) & 0xff)
+      output << ((checksum >> 8) & 0xff)
+      output << (checksum & 0xff)
+      diagnostic = raw.diagnostic.merge(
+        wrap: 'zlib',
+        raw_output_bytes: raw.string.bytesize,
+        output_bytes: output.bytesize,
+        output_bits: output.bytesize * 8
+      )
+      Rbzlib::OptimalDeflateResult.new(string: output, diagnostic: diagnostic)
+    end
+
     def initialize(level = Z_DEFAULT_COMPRESSION, wbits = MAX_WBITS, memlevel = DEF_MEM_LEVEL, strategy = Z_DEFAULT_STRATEGY)
       @z = ZStream.new
       @z.zstream_init(DeflateFuncs)
